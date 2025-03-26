@@ -1,0 +1,173 @@
+---
+title: "ST237 Assignment 2"
+author: "u5533616"
+output:
+  pdf_document: default
+editor: visual
+---
+
+### Packages
+
+Load any packages you need at the top of the notebook in this code chunk.
+
+```{r warning=FALSE}
+library(readxl)
+suppressPackageStartupMessages(library(dplyr))
+library(tidyr)
+library(ggplot2)
+#Loading libraries
+```
+
+### Critique of Visual Capitalist plot
+
+(No more than 200 words)
+
+Overall, the graph is fairly good, but there are some aspects of it that could be improved. For example, the storm background adds chart junk to the data, as it distracts the reader without actually adding anything to the graph, which goes against Tufte’s principles. Additionally, by only including the three most expensive natural disasters and grouping all the others together, it can make comparisons more difficult, particularly with disasters that aren’t consistently in the three most expensive, such as drought and flooding. Another issue with the plot is that whilst the number of disasters are separated by disaster type, the cost of the natural disasters isn’t, meaning that the impact of the disasters can’t fully be measured, as it isn’t clear from the graph which disasters were more impactful than others. However, the colours for the graph are well done, as the graph uses a categorical colour palette rather than a sequential or diverging one, meaning that the colours on the graph are very easy to read, which follows Kirk’s rules of accessibility and clarity.
+
+### Visualisation of weather disasters
+
+Recall that you can add new code chunks by pressing **ctrl-alt-i**.
+
+It is best to have many short code chunks that are self-contained and achieve a single task. Do not put all of your code in one long code chunk.
+
+```{r Reading, warning=FALSE}
+weather <- data.frame(read_xlsx("time-series-US-cost-1980-2024.xlsx",skip=2))
+#Importing the data, skipping the first two lines as they don't contain data
+```
+
+```{r Formatting, warning=FALSE}
+
+weather$Decade <- floor(weather$Year / 10) * 10 
+#Assigning the decade to each year of data
+
+decadeSummaryCount <- weather %>%
+  group_by(Decade) %>%
+  summarise(across(c(Drought.Count, Severe.Storm.Count, Wildfire.Count, 
+                     Tropical.Cyclone.Count, Flooding.Count, Freeze.Count,
+                     Winter.Storm.Count), sum, na.rm = TRUE))  
+
+#Summarising the data by decade for analysis for the frequency of natural disasters
+
+decadeSummaryCost <- weather %>%
+  group_by(Decade) %>%
+  summarise(across(c(Drought.Cost, Severe.Storm.Cost, Wildfire.Cost, 
+                     Tropical.Cyclone.Cost, Flooding.Cost, Freeze.Cost, 
+                     Winter.Storm.Cost), sum, na.rm = TRUE)) 
+
+#Same as above but for cost
+
+decadeSummaryErrorLower <- weather %>%
+  group_by(Decade) %>%
+  summarise(across(c(Drought.Lower.75, Severe.Storm.Lower.75, Wildfire.Lower.75,
+                     Tropical.Cyclone.Lower.75, Flooding.Lower.75, 
+                     Freeze.Lower.75, Winter.Storm.Lower.75), sum, na.rm = TRUE)) 
+
+#Same as above but for lower error bound of cost
+
+decadeSummaryErrorUpper <- weather %>%
+  group_by(Decade) %>%
+  summarise(across(c(Drought.Upper.75, Severe.Storm.Upper.75, 
+                     Wildfire.Upper.75, Tropical.Cyclone.Upper.75, 
+                     Flooding.Upper.75, Freeze.Upper.75, Winter.Storm.Upper.75),
+                   sum, na.rm = TRUE)) 
+
+#Same as above but for upper error bound of cost
+
+
+decadeSummaryCount <- decadeSummaryCount %>%
+  pivot_longer(cols = c("Drought.Count", "Severe.Storm.Count", "Wildfire.Count", 
+                        "Tropical.Cyclone.Count", "Flooding.Count", "Freeze.Count", 
+                        "Winter.Storm.Count"), 
+               names_to = "Type", 
+               values_to = "Count")
+
+#Changing the data to a long data set rather than a dataframe 
+#for the count of natural disasters
+
+decadeSummaryCost <- decadeSummaryCost %>%
+  pivot_longer(cols = c("Drought.Cost", "Severe.Storm.Cost", 
+                        "Wildfire.Cost", "Tropical.Cyclone.Cost", 
+                        "Flooding.Cost", "Freeze.Cost", "Winter.Storm.Cost"), 
+               names_to = "Type", 
+               values_to = "Cost")
+
+#Same as above but for cost
+
+decadeSummaryErrorLower <- decadeSummaryErrorLower %>%
+  pivot_longer(cols = c("Drought.Lower.75", "Severe.Storm.Lower.75", 
+                        "Wildfire.Lower.75", "Tropical.Cyclone.Lower.75",
+                        "Flooding.Lower.75", "Freeze.Lower.75", "Winter.Storm.Lower.75"), 
+               names_to = "Type", 
+               values_to = "Lower")
+
+#Same as above but for lower error bound of cost
+
+decadeSummaryErrorUpper <- decadeSummaryErrorUpper %>%
+  pivot_longer(cols = c("Drought.Upper.75", "Severe.Storm.Upper.75", 
+                        "Wildfire.Upper.75", "Tropical.Cyclone.Upper.75", 
+                        "Flooding.Upper.75", "Freeze.Upper.75", "Winter.Storm.Upper.75"), 
+               names_to = "Type", 
+               values_to = "Upper")
+
+#Same as above but for upper error bound of cost
+
+decadeSummaryCost$Upper <- decadeSummaryErrorUpper$Upper
+decadeSummaryCost$Lower <- decadeSummaryErrorLower$Lower
+
+#Combining the error bound data into one data frame with the cost data
+```
+
+```{r Plot, fig.cap="Count and Cost of natural disasters in the US, with the bar graph using left axis to show the number of disasters and the points/error bars using right axis to show the cost"}
+
+ggplot(decadeSummaryCount) + 
+  geom_bar(aes(x = Decade, y = Count, fill = Type), 
+           stat = "identity", position = position_dodge(width = 9)) +
+  #Creating a bar chart for the no. of natural disasters each decade
+  scale_fill_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3",
+                               "#a6d854", "#ffd92f", "#e5c494"), 
+                    labels = c("Drought", "Flooding", "Freeze", "Severe Storm",
+                               "Tropical Cyclone", "Wildfire", "Winter Storm")) +
+  #Adding manual colours, and a key for the graph
+  geom_point(data = decadeSummaryCost, aes(x = Decade, y = Cost/10, group = Type), 
+             stat = "identity", position = position_dodge(width=9), 
+             size = 2.5, colour = "black") +
+  #Adding a larger black point to set up an outline for the 
+  #points showing the cost of disasters
+  geom_point(data = decadeSummaryCost, aes(x = Decade, y = Cost/10, colour = Type), 
+             stat = "identity", position = position_dodge(width=9)) +
+  #Adding a smaller point the same colour as the bar chart
+  scale_color_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb", 
+                                "#e78ac3", "#a6d854", "#ffd92f", "#e5c494"), 
+                     labels = c("Drought", "Flooding", "Freeze", "Severe Storm", 
+                                "Tropical Cyclone", "Wildfire", "Winter Storm")) +
+  #Adding the same colour scale as the bar chart for readability
+  geom_errorbar(data = decadeSummaryCost, aes(x = Decade, ymin = Lower/10,
+                                              ymax = Upper/10, group = Type), 
+                stat = "identity", position = position_dodge(width=9)) +
+  #Adding error bars to the points for the cost
+  scale_y_continuous(name = "Number of Natural Disasters per decade", 
+                     sec.axis = sec_axis(~ . * 10, 
+        name = "Cost of Natural Disasters per decade ($1 Billion)***")) +
+  #Adding a second scale on the right for reading the cost of the disasters
+  labs(title = "Count and Cost of US natural disasters exceeding $1 Billion**",
+  x = "Decade*", caption = "*2020s data as of May 8th 2024 | Source: U.S NOAA
+       **Adjusted for inflation
+  *** Error Bars showing 70% Confidence Interval", fill = "Type of Disaster", 
+  colour = "Type of Disaster") +
+  #Adding the title and caption for the graph
+  theme_minimal() +
+  #Using a minimal theme to reduce chart junk
+  #Shrinking the axis labels to improve readability
+  theme(axis.title.x = element_text(size=10), 
+        axis.title.y.left = element_text(size=10), 
+        axis.title.y.right = element_text(size=9),
+        legend.position = "bottom")
+```
+
+### Design criteria
+
+Describe how you designed your visualisation(s) (No more than 300 words).
+
+For my plot, I wanted to address the main issues that I found in the original plot, mainly that without showing both cost and count of natural disasters, it is very hard to gain any real insight into the data. My plot has the count of natural disasters along the left-hand y-axis, with data separated along the x-axis by decade and type of natural disaster. Along the right-hand y-axis there are points and error bars measuring the cost of natural disasters. I chose to use a categorical colour palette for maximum clarity and readability, and tried to ensure that no similar colours/colours commonly affected by colour-blindness were near each other, again to improve readability. I used a minimal theme in order to reduce chart junk and data ink, as I wanted to ensure that only necessary data ink/points were included in the graph to improve readability. I also tried to keep the scales used as simple as possible, without using any sort of log scale or omission of data points to ensue the trustworthiness of my graph. Following on from this, I also ensured that both sets of the data used the same scale on their axis, in order to avoid skewing the data. For example, had I not made the right-hand axis proportional to the left one, it could have made the cost of soe of the natural disasters more impactful than it actually was. Whilst there could possibly be some issues with readability due to including  both points and a bar graph on the same plot, I felt that the improvement in trustworthiness and accessibility of the data by having both cost and count on the same graph was more important, as it meant that the data could be more easily compared.
+
+
