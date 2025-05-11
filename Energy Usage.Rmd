@@ -1,0 +1,154 @@
+---
+title: "Energy Usage"
+author: "Eddie"
+date: "2024-09-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(lubridate)
+library(viridis)
+library(hrbrthemes)
+library(tidyverse)
+library(season)
+library(scales)
+electricity <- read.csv("C:/Users/eddie/OneDrive/Desktop/Docs/R/electricity.csv")
+gas <- read.csv("C:/Users/eddie/OneDrive/Desktop/Docs/R/gas.csv")
+```
+
+```{r}
+electricity <- electricity %>%
+  mutate(month = month(Date),
+         week = week(Date),
+         day = day(Date),
+         hour = hour(hm(Time)),
+         minute = minute(hm(Time)))
+#electricityMonth <- aggregate(Consumption ~ month, data = electricity, FUN = sum)
+electricityWeek <- aggregate(Consumption ~ week, data = electricity, FUN = sum)
+electricityHour <- aggregate(Consumption ~ hour, data = electricity, FUN = sum)
+```
+
+```{r}
+gas <- gas %>%
+  mutate(month = month(Date),
+         week = week(Date),
+         day = day(Date),
+         hour = hour(hm(Time)),
+         minute = minute(hm(Time)))
+#gasMonth <- aggregate(Consumption ~ month, data = gas, FUN = sum)
+gasWeek <- aggregate(Consumption ~ week, data = gas, FUN = sum)
+gasHour <- aggregate(Consumption ~ hour, data = gas, FUN = sum)
+```
+
+
+```{r}
+for (i in c(1:1484)) {
+  gas$hour[i] <- gas$hour[i] + (gas$minute[i])/60
+  electricity$hour[i] <- electricity$hour[i] + (electricity$minute[i])/60
+}
+```
+
+```{r}
+electricity.M.H <- electricity %>%
+  group_by(month, hour) %>%
+  summarize(Consumption_SUM = sum(Consumption, na.rm = TRUE), .groups = "drop")
+
+gas.M.H <- gas %>%
+  group_by(month, hour) %>%
+  summarize(Consumption_SUM = sum(Consumption, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+#ggplot(energy.M.H, aes(x = month, y = hour, fill = Consumption_SUM)) +
+#  geom_tile() +
+#  scale_fill_gradient(low = "white", high = "red2") +
+#  labs(
+#    title = "Energy Usage by month and hour",
+#    x = "Month",
+#    y = "Hour",
+#    fill = "Usage",
+#  ) +
+#  theme_dark() +
+#  scale_x_continuous(breaks = c(2, 3, 4, 5, 6, 7, 8, 9), labels = c("Feb", "Mar",
+#      "Apr", "May", "Jun", "Jul", "Aug", "Sep")) +
+#  scale_y_continuous(breaks = c(0:23)) +
+#  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+
+```{r}
+electricity.C.D.H <- electricity %>%
+  group_by(day, hour) %>%
+  summarize(Consumption_SUM_C_D_E = sum(Consumption, na.rm = TRUE), .groups = "drop")
+
+electricity.P.D.H <- electricity %>%
+  group_by(day, hour) %>%
+  summarize(Cost_SUM_P_D_E = sum(Cost, na.rm = TRUE), .groups = "drop")
+
+gas.C.D.H <- gas %>%
+  group_by(day, hour) %>%
+  summarize(Consumption_SUM_C_D_G = sum(Consumption, na.rm = TRUE), .groups = "drop")
+
+gas.P.D.H <- gas %>%
+  group_by(day, hour) %>%
+  summarize(Cost_SUM_P_D_G = sum(Cost, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+ggplot(electricity.C.D.H, aes(x = day, y = hour, fill = Consumption_SUM_C_D_E)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red2") +
+  labs(
+    title = "Electricity Usage by day and hour",
+    x = "Day",
+    y = "Hour",
+    fill = "Usage",
+  ) +
+  theme_dark() +
+  scale_x_continuous(breaks = c(1:31)) +
+  scale_y_continuous(breaks = c(0:23)) +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+```{r echo=FALSE}
+ggplot(gas.C.D.H, aes(x = day, y = hour, fill = Consumption_SUM_C_D_G)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red2") +
+  labs(
+    title = "Gas Usage by day and hour",
+    x = "Day",
+    y = "Hour",
+    fill = "Usage",
+  ) +
+  theme_dark() +
+  scale_x_continuous(breaks = c(1:31)) +
+  scale_y_continuous(breaks = c(0:23)) +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+
+ggplot(gas.P.D.H, aes(x = day, y = hour, fill = Cost_SUM_P_D_G)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red2") +
+  labs(
+    title = "Gas Usage by day and hour",
+    x = "Day",
+    y = "Hour",
+    fill = "Usage",
+  ) +
+  theme_dark() +
+  scale_x_continuous(breaks = c(1:31)) +
+  scale_y_continuous(breaks = c(0:23)) +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+
+```{r}
+ggplot(gas, aes(x=Cost, y=Consumption)) +
+  geom_point()
+
+ggplot(electricity, aes(x=Cost, y=Consumption)) +
+  geom_point()
+
+```
